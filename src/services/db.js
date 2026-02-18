@@ -3,12 +3,26 @@ import { Pool } from 'pg';
 
 dotenv.config();
 
+const shouldUseSsl = (() => {
+  const mode = (process.env.PGSSLMODE || '').toLowerCase();
+  if (mode === 'disable') return false;
+  if (mode === 'require' || mode === 'verify-ca' || mode === 'verify-full') return true;
+
+  const flag = (process.env.PGSSL || '').toLowerCase();
+  if (flag === 'true' || flag === '1' || flag === 'yes') return true;
+  if (flag === 'false' || flag === '0' || flag === 'no') return false;
+
+  const host = (process.env.PGHOST || 'localhost').toLowerCase();
+  return host !== 'localhost' && host !== '127.0.0.1';
+})();
+
 export const pool = new Pool({
   host: process.env.PGHOST || 'localhost',
   port: parseInt(process.env.PGPORT || '5432', 10),
   user: process.env.PGUSER || 'pgadmin',
   password: process.env.PGPASSWORD || 'pgadmin',
-  database: process.env.PGDATABASE || 'jeneergroup'
+  database: process.env.PGDATABASE || 'jeneergroup',
+  ...(shouldUseSsl ? { ssl: { rejectUnauthorized: false } } : {})
 });
 
 export async function tableExists(table) {
